@@ -1,0 +1,101 @@
+[Scia Reto](https://sciareto.org) mind map   
+> __version__=`1.1`,showJumps=`true`
+---
+
+# 代码分析
+> mmd.emoticon=`tree`
+
+
+## readme文件
+
+### models模型
+
+#### 编码器，
+
+#####  定义map  
+
+##### 编码图片
+
+###### x \-\> z\_e
+
+##### 架构
+
+###### Encoder\(\)等于右边
+
+####### Conv2d
+
+######## ReLU\(\)
+
+######### Conv2d
+
+########## ReLU\(\)
+
+########### ResidualStack
+
+#### 残差模块 
+
+##### ResidualStack等于右边
+
+###### ResidualLayer\(in\_dim, h\_dim, res\_h\_dim\)\]\*n\_res\_layers
+
+####### res\_block\(x\) 等于右边
+
+######## ReLU\(\)
+
+######### Conv2d
+
+########## ReLU\(\)
+
+########### Conv2d
+
+####### x = x \+ self\.res\_block\(x\)
+
+###### x = F\.relu\(x\)
+
+#### 量化器
+
+##### one\-hot vector定义距离最近的 嵌入向量
+
+##### z\_e \-\> z\_q
+
+#### 解码器
+
+##### 重建图片
+
+###### z\_q \-\> x\_hat
+
+##### 架构
+
+###### Decoder
+
+####### ConvTranspose2d
+
+######## ResidualStack
+
+######### ConvTranspose2d
+
+########## ReLU
+
+########### ConvTranspose2d
+
+#### 编码器和解码器 都是 卷积神经网络 和 逆卷积堆栈
+
+##### 其中包含 残差网络
+
+##### 残差网络定义
+
+###### \`ResidualLayer\` and \`ResidualStack\`
+
+### PixelCnn 从 vavae的 latent空间采样
+
+#### 原理
+
+##### 在 vqvae的压缩后的latent灰度图片中，进行图像拟合重建
+
+#### 步骤
+
+##### 需要先 将在数据集中， 进行vqvae压缩， 并使用np\.save保存量化后的 latent
+
+##### 运行 pixelcnn 进行图像重建
+
+###### \`python pixelcnn/gated\_pixelcnn\.py\`

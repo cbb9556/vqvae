@@ -16,7 +16,7 @@ class ResidualLayer(nn.Module):
     def __init__(self, in_dim, h_dim, res_h_dim):
         super(ResidualLayer, self).__init__()
         self.res_block = nn.Sequential(
-            nn.ReLU(True),
+            nn.ReLU(True), # inplace为 true， 原地操作输入，减少内存，覆盖原始值
             nn.Conv2d(in_dim, res_h_dim, kernel_size=3,
                       stride=1, padding=1, bias=False),
             nn.ReLU(True),

@@ -66,7 +66,7 @@ results = {
 
 def train():
 
-    for i in range(args.n_updates):
+    for i in range(args.n_updates): #5000千次
         (x, _) = next(iter(training_loader))
         x = x.to(device)
         optimizer.zero_grad()

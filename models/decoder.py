@@ -25,7 +25,7 @@ class Decoder(nn.Module):
         stride = 2
 
         self.inverse_conv_stack = nn.Sequential(
-            nn.ConvTranspose2d(
+            nn.ConvTranspose2d( #填充很多邻居， 扩充在输入的h*2基础上增加长宽，输出比输入h*w更大
                 in_dim, h_dim, kernel_size=kernel-1, stride=stride-1, padding=1),
             ResidualStack(h_dim, h_dim, res_h_dim, n_res_layers),
             nn.ConvTranspose2d(h_dim, h_dim // 2,
