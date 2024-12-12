@@ -34,23 +34,49 @@ class BlockDataset(Dataset):
 
 class LatentBlockDataset(Dataset):
     """
-    Loads latent block dataset 
+    加载潜在块数据集
     """
 
     def __init__(self, file_path, train=True, transform=None):
-        print('Loading latent block data')
+        """
+        初始化潜在块数据集
+
+        参数:
+        - file_path: 潜在数据文件的路径
+        - train:     布尔值，表示是否加载训练数据或测试数据
+        - transform: 可选的数据转换操作
+        """
+        # 加载潜在块数据
+        print('加载潜在块数据')
         data = np.load(file_path, allow_pickle=True)
-        print('Done loading latent block data')
-        
+        print('完成加载潜在块数据')
+
+        # 将数据划分为训练集和测试集
         self.data = data[:-500] if train else data[-500:]
         self.transform = transform
 
     def __getitem__(self, index):
+        """
+        获取数据集中的一项
+
+        参数:
+        - index: 要获取的项的索引
+
+        返回:
+        - img:   处理后的数据项
+        - label: 数据项的标签，固定为0
+        """
+        # 从数据中获取单个项
         img = self.data[index]
+        # 如果存在转换操作，则应用转换
         if self.transform is not None:
             img = self.transform(img)
+        # 分配固定的标签
         label = 0
         return img, label
 
     def __len__(self):
+        """
+        获取数据集中的总项数
+        """
         return len(self.data)

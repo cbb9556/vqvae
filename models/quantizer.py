@@ -26,6 +26,10 @@ class VectorQuantizer(nn.Module):
 
         self.embedding = nn.Embedding(self.n_e, self.e_dim)
         # 将张量中的每个元素按照均匀分布进行随机赋值
+        # 取值范围 ([-1./n_embed, 1./n_embed]) 是一种常见的初始化策略，特别是对于嵌入层（embedding layer）。这里的 n_embed 通常表示嵌入向量的维度
+        # 平滑梯度：较小的初始权重可以帮助梯度在反向传播过程中更加平滑，避免梯度爆炸或消失。
+        # 对称性：负值和正值的对称分布有助于模型在训练初期更好地探索参数空间。
+        # 经验法则：这种初始化方法在实践中被证明是有效的，特别是在处理高维嵌入时
         self.embedding.weight.data.uniform_(-1.0 / self.n_e, 1.0 / self.n_e)
 
     def forward(self, z):

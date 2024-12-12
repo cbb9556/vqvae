@@ -9,7 +9,7 @@ from models.decoder import Decoder
 
 class VQVAE(nn.Module):
     def __init__(self, h_dim, res_h_dim, n_res_layers,
-                 n_embeddings, embedding_dim, beta, save_img_embedding_map=False):
+                 n_embeddings, embedding_dim, beta, save_img_embedding_map=True):
         super(VQVAE, self).__init__()
         # encode image into continuous latent space，
         # 和stable diffusion的vae不同，这里只用简单的cnn
