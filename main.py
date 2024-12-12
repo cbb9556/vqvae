@@ -39,7 +39,7 @@ if args.save:
 """
 Load data and define batch data loaders
 """
-
+#x_train_var 是训练数据集的方差
 training_data, validation_data, training_loader, validation_loader, x_train_var = utils.load_data_and_data_loaders(
     args.dataset, args.batch_size)
 """
@@ -52,16 +52,28 @@ model = VQVAE(args.n_hiddens, args.n_residual_hiddens,
 """
 Set up optimizer and training loop
 """
+# 初始化Adam优化器，用于模型参数的优化
+# 选择Adam作为优化算法，因为它能够适应不同参数的梯度变化，提高训练效率
+# 参数说明：
+# - model.parameters()：将模型的所有参数传递给优化器，以便优化器知道需要优化哪些参数
+# - lr=args.learning_rate：设置学习率，即参数更新的步长，由命令行参数提供，允许用户自定义学习率
+# - amsgrad=True：使用AMSGrad变体，它改进了Adam优化器在某些情况下的收敛问题
 optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
 
 model.train()
 
+# 初始化一个字典来存储训练过程中的各种指标和数据
 results = {
+    # 记录更新次数，用于追踪模型参数的调整次数
     'n_updates': 0,
+    # 存储重建误差，用于监控模型在训练过程中的误差变化
     'recon_errors': [],
+    # 存储损失值，用于评估模型性能随时间的变化情况
     'loss_vals': [],
+    # 存储困惑度，作为评估模型生成序列质量的一个指标
     'perplexities': [],
 }
+
 
 
 def train():

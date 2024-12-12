@@ -99,3 +99,199 @@
 ##### 运行 pixelcnn 进行图像重建
 
 ###### \`python pixelcnn/gated\_pixelcnn\.py\`
+
+## main\.py代码分析
+
+### parser\.add\_argument\("\-\-batch\_size", type=int, default=32\)<br/>parser\.add\_argument\("\-\-n\_updates", type=int, default=5000\)<br/>parser\.add\_argument\("\-\-n\_hiddens", type=int, default=128\)<br/>parser\.add\_argument\("\-\-n\_residual\_hiddens", type=int, default=32\)<br/>parser\.add\_argument\("\-\-n\_residual\_layers", type=int, default=2\)<br/>parser\.add\_argument\("\-\-embedding\_dim", type=int, default=64\)<br/>parser\.add\_argument\("\-\-n\_embeddings", type=int, default=512\)<br/>parser\.add\_argument\("\-\-beta", type=float, default=\.25\)<br/>parser\.add\_argument\("\-\-learning\_rate", type=float, default=3e\-4\)<br/>parser\.add\_argument\("\-\-log\_interval", type=int, default=50\)<br/>parser\.add\_argument\("\-\-dataset",  type=str, default='CIFAR10'\)
+> align=`left`
+
+
+### embedding\_loss, x\_hat, perplexity = model\(x\)
+
+#### model = VQVAE\(args\.n\_hiddens, <br/>args\.n\_residual\_hiddens=32,<br/>args\.n\_residual\_layers, <br/>args\.n\_embeddings=512, <br/>args\.embedding\_dim=64, <br/>args\.beta\)\.to\(device\)
+
+##### 编码器<br/>self\.encoder = Encoder\(3, h\_dim=128, n\_res\_layers=2, res\_h\_dim=32\)
+
+###### Conv2d卷积神经网络
+
+####### 4\*4卷积
+
+######## stride = 2
+
+######### padding = 1
+
+####### in\-channel = 3
+
+######## out\-channel = 128/2
+
+###### relu
+
+####### 计算简单， 但是有 死亡神经元问题
+
+###### Conv2d卷积神经网络
+
+####### in\-channel = 128/2
+
+######## out\-channel = 128
+
+####### 4\*4卷积
+
+######## stride = 2
+
+######### padding = 1
+
+###### relu
+
+###### Conv2d卷积神经网络
+
+####### in\-channel = 128/2
+
+######## out\-channel = 128
+
+###### ResidualStack
+
+####### self\.stack = nn\.ModuleList\(<br/>            \[ResidualLayer\(in\_dim, h\_dim, res\_h\_dim\)\]\*n\_res\_layers\)
+> align=`left`
+
+
+######## x = x \+ self\.res\_block\(x\)
+
+######### ResidualLayer 
+
+########## res\-h\-dim = 32
+
+########### layers = 2
+
+########## relu
+
+########## Conv2d
+
+########### in\-channel = 128
+
+############ out\-channel = 32
+
+########### 1\*1 卷积
+
+########## relu
+
+########## Conv2d
+
+########### in\-channel = 32
+
+############ out\-channel = 128
+
+########### 1\*1 卷积
+
+####### in\_dim 128, h\_dim \-= 32, res\_h\_dim=2
+
+##### 预先量化卷积<br/>self\.pre\_quantization\_conv = nn\.Conv2d\(            <br/>h\_dim=128, embedding\_dim=64, kernel\_size=1, stride=1\)<br/> \#1\*1卷积， 增加通道数到 embedding\_dim
+
+##### \# vqvae量化<br/>self\.vector\_quantization = VectorQuantizer\(<br/>            n\_embeddings=512, embedding\_dim=64, beta=0\.25\)
+
+###### \# 创建一个词嵌入层，词汇表大小为 512，嵌入维度为 64<br/>self\.embedding = nn\.Embedding\(self\.n\_e, self\.e\_dim = 64\)<br/>\# 输出一个形状为 \(batch\_size, seq\_length, embedding\_dim\) 的张量
+
+####### z\.permute\(0, 2, 3, 1\) 重新排列了张量的维度顺序，<br/>这可能导致张量在内存中不再是连续存储的。
+
+####### z\.view\(\-1, self\.e\_dim = 64\) 需要张量在内存中是连续的，<br/>以便正确地重塑张量。
+
+######## 假设 z 的形状为 \(N, C, H, W\)，经过 permute\(0, 2, 3, 1\) 后变为 \(N, H, W, C\)，<br/>那么 z\.view\(\-1, self\.e\_dim\) 会将张量重塑为 \(N \* H \* W, C\) 形状。
+
+######## 按照 self\.e\_dim = 64 展开，每个位置dim是64
+
+####### flatten的向量的长度为 B\*H\*W
+
+###### 编码器输出的 ze 与 量化vq 的e聚类中心的距离
+
+####### \# distances from z to embeddings e\_j \(z \- e\)^2 = z^2 \+ e^2 \- 2 e \* z<br/>        d = torch\.sum\(z\_flattened \*\* 2, dim=1, keepdim=True\) \+ \\<br/>            torch\.sum\(self\.embedding\.weight\*\*2, dim=1\) \- 2 \* \\<br/>            torch\.matmul\(z\_flattened, self\.embedding\.weight\.t\(\)\)
+
+####### 通过展开计算
+
+###### \# 寻找每个样本在编码空间中的最小距离索引<br/>min\_encoding\_indices = torch\.argmin\(d, dim=1\)\.unsqueeze\(1\)<br/>\# 初始化一个全零张量，用于存放最小编码的one\-hot表示<br/>min\_encodings = torch\.zeros\(<br/>    min\_encoding\_indices\.shape\[0\], self\.n\_e\)\.to\(device\)<br/>\# 使用scatter\_方法，将最小编码索引处的值设为1，以形成one\-hot向量<br/>min\_encodings\.scatter\_\(1, min\_encoding\_indices, 1\)
+
+###### 从距离中找出，最小距离的index
+
+#######         min\_encoding\_indices = torch\.argmin\(d, dim=1\)\.unsqueeze\(1\)
+
+####### 每个样本，找到一个最小的index
+
+###### 对这个index， 进行 1\-hot编码
+
+###### sg 停止梯度的loss函数计算
+
+####### loss = torch\.mean\(\(z\_q\.detach\(\)\-z\)\*\*2\) \+ self\.beta \* \\<br/>            torch\.mean\(\(z\_q \- z\.detach\(\)\) \*\* 2\) <br/>\# 固定e，让zq靠近e， 这里会更新 self\.embedding\.weight的参数，量化层
+
+####### torch\.mean\(\(z\_q\.detach\(\)\-z\)\*\*2\)
+
+######## 更新 z的参数， 让 z 靠近 zq
+
+######## z就是 编码器的参数
+
+####### torch\.mean\(\(z\_q \- z\.detach\(\)\)
+
+######## 更新 zq的参数， 让 zq靠近 z
+
+######## zq就是 vq 量化层的参数
+
+######### self\.embedding\.weight
+
+####### 量化层self\.embedding\.weight 
+
+######## 仅依赖 这个loss函数
+
+###### 为了保障， recon\-loss重构误差的参数传递给 编码器z
+
+####### z\_q = z \+ \(z\_q \- z\)\.detach\(\)
+
+####### 这样， zq 参数 能够通过z 前向传播过来，<br/>但是反向传播，zq不更新参数， 梯度用于更新z的参数
+
+####### z\_q \- z：这部分计算了量化后的特征 z\_q 和原始特征 z 之间的差异。<br/>\.detach\(\)：这个方法切断了 z 的梯度传递，使得 z 的梯度不会传递到 self\.embedding\.weight。<br/>z \+ \(z\_q \- z\)\.detach\(\)：最终的 z\_q 保留了 z\_q \- z 的梯度，但 z 的梯度被切断了。<br/>因此，self\.embedding\.weight 的更新主要依赖于量化损失（通常称为 commitment loss）<br/>和其他可能的正则化项，而不是直接依赖于图像重构损失 loss。
+> align=`left`
+
+
+####### 编码器的参数z， 其参数更新 依赖于 最终的图像重构损失
+
+##### 解码器<br/>self\.decoder = Decoder\(embedding\_dim,<br/> h\_dim, n\_res\_layers=2, res\_h\_dim=32\)
+
+###### ConvTranspose2d
+
+####### in\-channel = 64
+
+######## out\-channel=128
+
+####### 3\*3 kenel
+
+######## stride=1
+
+###### ResidualStack
+
+###### ConvTranspose2d
+
+####### in\-channel = 128
+
+######## out\-channel=128/2
+
+####### 4\*4 kenel
+
+######## stride=2
+
+###### ReLU
+
+###### ConvTranspose2d
+
+####### in\-channel =64
+
+######## out\-channel=3
+
+####### 4\*4 kenel
+
+######## stride=2
+
+### recon\_loss = torch\.mean\(\(x\_hat \- x\)\*\*2\) / x\_train\_var
+
+#### 在图像数据处理中，除以 x\_train\_var 归一化损失确实有一些特定的好处。以下是详细的解释：<br/>标准化输入：<br/>图像数据通常具有较高的动态范围，不同图像之间的像素值可能相差很大。通过除以训练数据的方差 x\_train\_var，可以将输入数据标准化，使得所有图像的像素值在一个相对统一的范围内。这有助于模型更快地收敛，并且减少梯度爆炸或消失的风险。<br/>提高模型的鲁棒性：<br/>归一化损失可以提高模型对不同图像数据的鲁棒性。例如，如果某些图像的亮度或对比度较高，而其他图像较低，归一化可以减少这些因素对模型训练的影响，使模型更加关注图像的结构特征。<br/>改善优化过程：<br/>在深度学习中，优化过程对损失函数的平滑性和梯度的稳定性非常敏感。归一化损失可以使得损失函数更加平滑，梯度更加稳定，从而加速模型的收敛并提高最终的性能。<br/>增强泛化能力：<br/>通过归一化损失，模型可以更好地泛化到未见过的数据。这是因为归一化消除了数据方差的影响，使得模型更加关注数据的内在结构，而不是被数据的尺度所干扰。这对于图像识别、分类等任务尤为重要。<br/>简化超参数调整：<br/>归一化损失可以简化超参数的调整过程。由于损失值已经归一化，超参数的选择可以更加一致，不受数据方差变化的影响。这可以减少调参的时间和复杂度。<br/>数值稳定性：<br/>对于高维图像数据，未经归一化的损失可能会导致数值不稳定，尤其是在使用浮点数进行计算时。归一化可以减少这种数值不稳定性的风险，提高计算的精度。<br/>综上所述，归一化损失在图像数据处理中具有多方面的优势，可以提高模型的训练效果、鲁棒性和泛化能力。
+> align=`left`
+
+
+### loss = recon\_loss \+ embedding\_loss<br/>        loss\.backward\(\)
+> align=`left`
+
